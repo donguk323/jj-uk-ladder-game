@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>진주♥동욱 Ultimate 사다리 게임</title>
+    <title>JJ♥DU Ultimate 사다리 게임</title>
     <style>
         /* 기본 리셋 및 폰트 설정 */
         * {
@@ -435,6 +435,24 @@
             z-index: 10;
         }
 
+        /* 성능 지표 표시 (개발 모드) */
+        .performance-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .performance-indicator.show {
+            display: block;
+        }
+
         /* 애니메이션 */
         .pulse {
             animation: pulse 2s infinite;
@@ -512,6 +530,13 @@
 <body>
     <!-- 배경 파티클 캔버스 -->
     <canvas class="background-particles" id="backgroundParticles"></canvas>
+    
+    <!-- 성능 지표 표시 -->
+    <div class="performance-indicator" id="performanceIndicator">
+        <div>FPS: <span id="fpsCounter">60</span></div>
+        <div>Memory: <span id="memoryUsage">0MB</span></div>
+        <div>Particles: <span id="particleCount">0</span></div>
+    </div>
 
     <div class="container">
         <!-- 헤더 -->
@@ -540,7 +565,7 @@
                     </button>
                 </div>
 
-                <h2 class="section-title">💝 오늘의 선택지를 입력해주세요</h2>
+                <h2 class="section-title">💝 오늘의 운명은?</h2>
                 
                 <div class="options-container" id="optionsContainer">
                     <div class="option-input">
@@ -602,33 +627,751 @@
     </div>
 
     <script>
-        // 고급 사다리 게임 클래스
-        class UltimateLadderGame {
+        // 1. 최적화된 파티클 시스템
+        class OptimizedParticleSystem {
+            constructor(maxParticles = 50) {
+                this.particles = new Array(maxParticles);
+                this.activeParticles = 0;
+                this.maxParticles = maxParticles;
+                this.particlePool = [];
+                
+                // 파티클 객체 미리 생성 (객체 풀링)
+                for (let i = 0; i < maxParticles; i++) {
+                    this.particlePool.push(this.createParticleObject());
+                }
+            }
+            
+            createParticleObject() {
+                return {
+                    x: 0, y: 0, vx: 0, vy: 0,
+                    size: 0, color: '', life: 0,
+                    decay: 0, active: false, symbol: null
+                };
+            }
+            
+            addParticle(config) {
+                if (this.activeParticles >= this.maxParticles) {
+                    return null;
+                }
+                
+                let particle = null;
+                for (let i = 0; i < this.maxParticles; i++) {
+                    if (!this.particles[i] || !this.particles[i].active) {
+                        particle = this.particles[i] || this.particlePool.pop();
+                        this.particles[i] = particle;
+                        break;
+                    }
+                }
+                
+                if (particle) {
+                    Object.assign(particle, config, { active: true });
+                    this.activeParticles++;
+                }
+                
+                return particle;
+            }
+            
+            update() {
+                let activeCount = 0;
+                
+                for (let i = 0; i < this.maxParticles; i++) {
+                    const particle = this.particles[i];
+                    if (!particle || !particle.active) continue;
+                    
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vy += 0.05;
+                    particle.life -= particle.decay;
+                    
+                    if (particle.life <= 0) {
+                        particle.active = false;
+                        this.particlePool.push(particle);
+                    } else {
+                        activeCount++;
+                    }
+                }
+                
+                this.activeParticles = activeCount;
+            }
+            
+            render(ctx) {
+                const normalParticles = [];
+                const symbolParticles = [];
+                
+                for (let i = 0; i < this.maxParticles; i++) {
+                    const particle = this.particles[i];
+                    if (!particle || !particle.active) continue;
+                    
+                    if (particle.symbol) {
+                        symbolParticles.push(particle);
+                    } else {
+                        normalParticles.push(particle);
+                    }
+                }
+                
+                this.renderNormalParticles(ctx, normalParticles);
+                this.renderSymbolParticles(ctx, symbolParticles);
+            }
+            
+            renderNormalParticles(ctx, particles) {
+                particles.forEach(particle => {
+                    ctx.save();
+                    ctx.globalAlpha = particle.life;
+                    ctx.fillStyle = particle.color;
+                    ctx.shadowColor = particle.color;
+                    ctx.shadowBlur = 4;
+                    
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+            }
+            
+            renderSymbolParticles(ctx, particles) {
+                particles.forEach(particle => {
+                    ctx.save();
+                    ctx.globalAlpha = particle.life;
+                    ctx.font = `${particle.size * 3}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = particle.color;
+                    ctx.shadowBlur = 3;
+                    ctx.fillText(particle.symbol, particle.x, particle.y);
+                    ctx.restore();
+                });
+            }
+            
+            cleanup() {
+                this.activeParticles = 0;
+                this.particles.forEach(particle => {
+                    if (particle) particle.active = false;
+                });
+            }
+            
+            getActiveCount() {
+                return this.activeParticles;
+            }
+        }
+
+        // 2. Canvas 렌더링 최적화
+        class OptimizedCanvasRenderer {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                
+                this.offscreenCanvas = document.createElement('canvas');
+                this.offscreenCtx = this.offscreenCanvas.getContext('2d');
+                
+                this.backgroundCanvas = document.createElement('canvas');
+                this.backgroundCtx = this.backgroundCanvas.getContext('2d');
+                
+                this.ladderCanvas = document.createElement('canvas');
+                this.ladderCtx = this.ladderCanvas.getContext('2d');
+                
+                this.renderCache = new Map();
+                this.dirtyRegions = [];
+                
+                this.initializeLayers();
+            }
+            
+            initializeLayers() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                [this.offscreenCanvas, this.backgroundCanvas, this.ladderCanvas].forEach(canvas => {
+                    canvas.width = width;
+                    canvas.height = height;
+                });
+            }
+            
+            prerenderBackground() {
+                const cacheKey = `bg_${this.canvas.width}_${this.canvas.height}`;
+                
+                if (this.renderCache.has(cacheKey)) {
+                    return this.renderCache.get(cacheKey);
+                }
+                
+                const bgCtx = this.backgroundCtx;
+                bgCtx.clearRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
+                
+                const bgGradient = bgCtx.createLinearGradient(0, 0, 0, this.backgroundCanvas.height);
+                bgGradient.addColorStop(0, 'rgba(102, 126, 234, 0.1)');
+                bgGradient.addColorStop(0.5, 'rgba(156, 136, 255, 0.05)');
+                bgGradient.addColorStop(1, 'rgba(255, 107, 107, 0.1)');
+                
+                bgCtx.fillStyle = bgGradient;
+                bgCtx.fillRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
+                
+                this.renderCache.set(cacheKey, this.backgroundCanvas);
+                return this.backgroundCanvas;
+            }
+            
+            prerenderLadder(ladderData) {
+                const cacheKey = `ladder_${JSON.stringify(ladderData.options)}_${ladderData.height}`;
+                
+                if (this.renderCache.has(cacheKey)) {
+                    return this.renderCache.get(cacheKey);
+                }
+                
+                const ladderCtx = this.ladderCtx;
+                ladderCtx.clearRect(0, 0, this.ladderCanvas.width, this.ladderCanvas.height);
+                
+                this.drawStaticLadder(ladderCtx, ladderData);
+                
+                this.renderCache.set(cacheKey, this.ladderCanvas);
+                return this.ladderCanvas;
+            }
+            
+            drawStaticLadder(ctx, ladderData) {
+                const options = ladderData.options;
+                const connections = ladderData.connections;
+                
+                const padding = 60;
+                const ladderWidth = this.canvas.width - (padding * 2);
+                const ladderHeight = this.canvas.height - 160;
+                const columnWidth = ladderWidth / Math.max(1, options.length - 1);
+                const rowHeight = ladderHeight / connections.length;
+                const startY = 100;
+                
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // 세로줄 그리기
+                ctx.lineWidth = 4;
+                for (let i = 0; i < options.length; i++) {
+                    const x = options.length === 1 ? this.canvas.width / 2 : padding + (i * columnWidth);
+                    
+                    const gradient = ctx.createLinearGradient(x, startY, x, startY + ladderHeight);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(0.5, '#764ba2');
+                    gradient.addColorStop(1, '#9c88ff');
+                    
+                    ctx.strokeStyle = gradient;
+                    ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
+                    ctx.shadowBlur = 8;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x, startY);
+                    ctx.lineTo(x, startY + ladderHeight);
+                    ctx.stroke();
+                }
+                
+                // 가로줄 그리기
+                ctx.shadowBlur = 0;
+                connections.forEach((levelConnections, level) => {
+                    if (levelConnections.length === 0) return;
+                    
+                    const y = startY + (level + 0.5) * rowHeight;
+                    
+                    ctx.lineWidth = 4;
+                    levelConnections.forEach(startCol => {
+                        if (startCol < options.length - 1) {
+                            const startX = options.length === 1 ? this.canvas.width / 2 : padding + (startCol * columnWidth);
+                            const endX = options.length === 1 ? this.canvas.width / 2 : padding + ((startCol + 1) * columnWidth);
+                            
+                            const gradient = ctx.createLinearGradient(startX, y, endX, y);
+                            gradient.addColorStop(0, '#764ba2');
+                            gradient.addColorStop(0.5, '#9c88ff');
+                            gradient.addColorStop(1, '#667eea');
+                            
+                            ctx.strokeStyle = gradient;
+                            ctx.shadowColor = 'rgba(156, 136, 255, 0.4)';
+                            ctx.shadowBlur = 6;
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(startX, y);
+                            ctx.lineTo(endX, y);
+                            ctx.stroke();
+                        }
+                    });
+                });
+                
+                ctx.shadowBlur = 0;
+                
+                // 시작점과 끝점 그리기
+                this.drawStartPoint(ctx, this.canvas.width / 2, 40);
+                this.drawEndPoints(ctx, options, padding, columnWidth, startY + ladderHeight, this.canvas.width / 2);
+            }
+            
+            drawStartPoint(ctx, centerX, y) {
+                const gradient = ctx.createRadialGradient(centerX, y, 0, centerX, y, 30);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(0.7, 'rgba(102, 126, 234, 0.8)');
+                gradient.addColorStop(1, 'rgba(118, 75, 162, 0.6)');
+                
+                ctx.fillStyle = gradient;
+                ctx.shadowColor = 'rgba(102, 126, 234, 0.6)';
+                ctx.shadowBlur = 15;
+                
+                ctx.beginPath();
+                ctx.arc(centerX, y, 25, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = '#667eea';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('💕', centerX, y + 8);
+                
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText('JJ♥UK', centerX, y - 35);
+            }
+            
+            drawEndPoints(ctx, options, padding, columnWidth, bottomY, centerX) {
+                options.forEach((option, i) => {
+                    const x = options.length === 1 ? centerX : padding + (i * columnWidth);
+                    
+                    const gradient = ctx.createRadialGradient(x, bottomY + 35, 0, x, bottomY + 35, 25);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                    gradient.addColorStop(0.7, 'rgba(255, 107, 107, 0.8)');
+                    gradient.addColorStop(1, 'rgba(255, 142, 142, 0.6)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.shadowColor = 'rgba(255, 107, 107, 0.4)';
+                    ctx.shadowBlur = 10;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, bottomY + 35, 22, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    ctx.strokeStyle = '#ff6b6b';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    
+                    ctx.shadowBlur = 0;
+                    
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.font = 'bold 16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText((i + 1).toString(), x, bottomY + 40);
+                    
+                    ctx.fillStyle = '#333';
+                    ctx.font = 'bold 12px sans-serif';
+                    const maxWidth = options.length === 1 ? 120 : columnWidth - 10;
+                    this.wrapText(ctx, option, x, bottomY + 70, maxWidth, 16);
+                });
+            }
+            
+            wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+                if (ctx.measureText(text).width <= maxWidth) {
+                    ctx.fillText(text, x, y);
+                    return;
+                }
+                
+                const words = text.split('');
+                let line = '';
+                let testLine = '';
+                
+                for (let n = 0; n < words.length; n++) {
+                    testLine = line + words[n];
+                    if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+                        ctx.fillText(line, x, y);
+                        line = words[n];
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, x, y);
+            }
+            
+            render(dynamicRenderCallback) {
+                const offCtx = this.offscreenCtx;
+                offCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+                
+                offCtx.drawImage(this.backgroundCanvas, 0, 0);
+                offCtx.drawImage(this.ladderCanvas, 0, 0);
+                
+                if (dynamicRenderCallback) {
+                    dynamicRenderCallback(offCtx);
+                }
+                
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.drawImage(this.offscreenCanvas, 0, 0);
+            }
+            
+            clearCache() {
+                this.renderCache.clear();
+            }
+            
+            cleanup() {
+                this.clearCache();
+            }
+        }
+
+        // 3. 이벤트 관리 최적화
+        class OptimizedEventManager {
             constructor() {
+                this.eventListeners = new Map();
+                this.throttledHandlers = new Map();
+                this.debouncedHandlers = new Map();
+                this.centralHandler = this.handleCentralEvent.bind(this);
+                this.eventMap = {};
+                this.delegationContainer = null;
+            }
+            
+            addEventListener(element, event, handler, options = {}) {
+                const key = `${element.id || 'anonymous'}_${event}`;
+                
+                if (this.eventListeners.has(key)) {
+                    this.removeEventListener(key);
+                }
+                
+                let optimizedHandler = handler;
+                
+                if (options.throttle) {
+                    optimizedHandler = this.createThrottledHandler(handler, options.throttle);
+                } else if (options.debounce) {
+                    optimizedHandler = this.createDebouncedHandler(handler, options.debounce);
+                }
+                
+                const listenerOptions = {
+                    passive: options.passive || false,
+                    once: options.once || false
+                };
+                
+                element.addEventListener(event, optimizedHandler, listenerOptions);
+                
+                this.eventListeners.set(key, {
+                    element,
+                    event,
+                    handler: optimizedHandler,
+                    originalHandler: handler,
+                    options: listenerOptions
+                });
+                
+                return key;
+            }
+            
+            createThrottledHandler(handler, delay) {
+                const key = `throttle_${handler.name}_${delay}`;
+                
+                if (this.throttledHandlers.has(key)) {
+                    return this.throttledHandlers.get(key);
+                }
+                
+                let lastCall = 0;
+                const throttledHandler = function(...args) {
+                    const now = Date.now();
+                    if (now - lastCall >= delay) {
+                        lastCall = now;
+                        return handler.apply(this, args);
+                    }
+                };
+                
+                this.throttledHandlers.set(key, throttledHandler);
+                return throttledHandler;
+            }
+            
+            createDebouncedHandler(handler, delay) {
+                const key = `debounce_${handler.name}_${delay}`;
+                
+                if (this.debouncedHandlers.has(key)) {
+                    return this.debouncedHandlers.get(key);
+                }
+                
+                let timeoutId;
+                const debouncedHandler = function(...args) {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => handler.apply(this, args), delay);
+                };
+                
+                this.debouncedHandlers.set(key, debouncedHandler);
+                return debouncedHandler;
+            }
+            
+            setupEventDelegation(container, eventMap) {
+                this.eventMap = eventMap;
+                this.delegationContainer = container;
+                
+                container.addEventListener('click', this.centralHandler, { passive: false });
+                container.addEventListener('input', this.centralHandler, { passive: true });
+                container.addEventListener('change', this.centralHandler, { passive: true });
+            }
+            
+            handleCentralEvent(event) {
+                const target = event.target;
+                const eventType = event.type;
+                
+                for (const [selector, handlers] of Object.entries(this.eventMap)) {
+                    if (target.matches && target.matches(selector)) {
+                        const handler = handlers[eventType];
+                        if (handler) {
+                            if (event.type === 'input') {
+                                this.createDebouncedHandler(handler, 300)(event);
+                            } else {
+                                handler(event);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            removeEventListener(key) {
+                const listenerData = this.eventListeners.get(key);
+                if (listenerData) {
+                    const { element, event, handler, options } = listenerData;
+                    element.removeEventListener(event, handler, options);
+                    this.eventListeners.delete(key);
+                }
+            }
+            
+            cleanup() {
+                for (const [key, listenerData] of this.eventListeners) {
+                    const { element, event, handler, options } = listenerData;
+                    element.removeEventListener(event, handler, options);
+                }
+                
+                if (this.delegationContainer) {
+                    this.delegationContainer.removeEventListener('click', this.centralHandler);
+                    this.delegationContainer.removeEventListener('input', this.centralHandler);
+                    this.delegationContainer.removeEventListener('change', this.centralHandler);
+                }
+                
+                this.eventListeners.clear();
+                this.throttledHandlers.clear();
+                this.debouncedHandlers.clear();
+            }
+        }
+
+        // 4. 고성능 애니메이션 시스템
+        class OptimizedAnimationSystem {
+            constructor() {
+                this.activeAnimations = new Map();
+                this.animationId = null;
+                this.lastFrameTime = 0;
+                this.targetFPS = 60;
+                this.frameInterval = 1000 / this.targetFPS;
+                this.isRunning = false;
+                
+                // 성능 모니터링
+                this.frameStats = {
+                    frameCount: 0,
+                    actualFPS: 0,
+                    droppedFrames: 0
+                };
+            }
+            
+            addAnimation(id, animationConfig) {
+                const animation = {
+                    id,
+                    startTime: performance.now(),
+                    duration: animationConfig.duration || 1000,
+                    easing: animationConfig.easing || this.easeInOutCubic,
+                    onUpdate: animationConfig.onUpdate,
+                    onComplete: animationConfig.onComplete,
+                    progress: 0,
+                    active: true
+                };
+                
+                this.activeAnimations.set(id, animation);
+                
+                if (!this.isRunning) {
+                    this.startAnimationLoop();
+                }
+                
+                return animation;
+            }
+            
+            startAnimationLoop() {
+                this.isRunning = true;
+                this.lastFrameTime = performance.now();
+                
+                const animate = (currentTime) => {
+                    const deltaTime = currentTime - this.lastFrameTime;
+                    
+                    if (deltaTime >= this.frameInterval) {
+                        this.updateAnimations(currentTime);
+                        this.updateFrameStats(deltaTime);
+                        this.lastFrameTime = currentTime;
+                    }
+                    
+                    if (this.activeAnimations.size > 0) {
+                        this.animationId = requestAnimationFrame(animate);
+                    } else {
+                        this.stopAnimationLoop();
+                    }
+                };
+                
+                this.animationId = requestAnimationFrame(animate);
+            }
+            
+            updateAnimations(currentTime) {
+                const completedAnimations = [];
+                
+                for (const [id, animation] of this.activeAnimations) {
+                    if (!animation.active) {
+                        completedAnimations.push(id);
+                        continue;
+                    }
+                    
+                    const elapsed = currentTime - animation.startTime;
+                    const progress = Math.min(elapsed / animation.duration, 1);
+                    const easedProgress = animation.easing(progress);
+                    animation.progress = easedProgress;
+                    
+                    if (animation.onUpdate) {
+                        try {
+                            animation.onUpdate(easedProgress, elapsed);
+                        } catch (error) {
+                            console.error('Animation update error:', error);
+                            animation.active = false;
+                        }
+                    }
+                    
+                    if (progress >= 1) {
+                        animation.active = false;
+                        if (animation.onComplete) {
+                            try {
+                                animation.onComplete();
+                            } catch (error) {
+                                console.error('Animation complete error:', error);
+                            }
+                        }
+                        completedAnimations.push(id);
+                    }
+                }
+                
+                completedAnimations.forEach(id => {
+                    this.activeAnimations.delete(id);
+                });
+            }
+            
+            stopAnimation(id) {
+                const animation = this.activeAnimations.get(id);
+                if (animation) {
+                    animation.active = false;
+                    this.activeAnimations.delete(id);
+                }
+            }
+            
+            stopAnimationLoop() {
+                this.isRunning = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            }
+            
+            stopAllAnimations() {
+                this.activeAnimations.clear();
+                this.stopAnimationLoop();
+            }
+            
+            easeInOutCubic(t) {
+                return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+            }
+            
+            updateFrameStats(deltaTime) {
+                this.frameStats.frameCount++;
+                
+                if (this.frameStats.frameCount % 60 === 0) {
+                    this.frameStats.actualFPS = Math.round(1000 / deltaTime);
+                    
+                    if (deltaTime > this.frameInterval * 1.5) {
+                        this.frameStats.droppedFrames++;
+                    }
+                }
+            }
+            
+            getPerformanceStats() {
+                return {
+                    ...this.frameStats,
+                    activeAnimations: this.activeAnimations.size,
+                    isRunning: this.isRunning
+                };
+            }
+        }
+
+        // 5. 성능 모니터링 시스템
+        class PerformanceMonitor {
+            constructor() {
+                this.memoryUsage = 0;
+                this.fps = 60;
+                this.particleCount = 0;
+                this.isVisible = false;
+                
+                this.setupElements();
+                this.startMonitoring();
+            }
+            
+            setupElements() {
+                this.indicator = document.getElementById('performanceIndicator');
+                this.fpsCounter = document.getElementById('fpsCounter');
+                this.memoryUsage = document.getElementById('memoryUsage');
+                this.particleCounter = document.getElementById('particleCount');
+            }
+            
+            startMonitoring() {
+                setInterval(() => {
+                    this.updateStats();
+                }, 1000);
+            }
+            
+            updateStats() {
+                if ('memory' in performance) {
+                    const memMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    this.memoryUsage.textContent = `${memMB}MB`;
+                }
+            }
+            
+            updateFPS(fps) {
+                this.fpsCounter.textContent = Math.round(fps);
+            }
+            
+            updateParticleCount(count) {
+                this.particleCounter.textContent = count;
+            }
+            
+            toggle() {
+                this.isVisible = !this.isVisible;
+                this.indicator.classList.toggle('show', this.isVisible);
+            }
+        }
+
+        // 최적화된 사다리 게임 메인 클래스
+        class OptimizedUltimateLadderGame {
+            constructor() {
+                // 최적화된 시스템들 초기화
+                this.particleSystem = new OptimizedParticleSystem(50);
+                this.eventManager = new OptimizedEventManager();
+                this.animationSystem = new OptimizedAnimationSystem();
+                this.performanceMonitor = new PerformanceMonitor();
+                
+                // 게임 상태
                 this.options = [];
                 this.ladderData = null;
+                this.isAnimating = false;
+                this.selectedPath = [];
+                this.currentStep = 0;
+                this.gameMode = 'simple';
+                this.backgroundParticles = [];
+                
+                // 캔버스 및 렌더링 관련
                 this.canvas = null;
                 this.ctx = null;
                 this.particleCanvas = null;
                 this.particleCtx = null;
                 this.backgroundCanvas = null;
                 this.backgroundCtx = null;
-                this.isAnimating = false;
-                this.selectedPath = [];
-                this.currentStep = 0;
-                this.gameMode = 'simple'; // simple, normal, extreme
-                this.particles = [];
-                this.backgroundParticles = [];
+                this.canvasRenderer = null;
                 
                 this.initializeElements();
-                this.bindEvents();
+                this.setupOptimizedEvents();
+                this.initializeCanvasRenderer();
                 this.initializeParticles();
                 this.updateUI();
                 this.startBackgroundAnimation();
+                
+                // 성능 모니터링 토글 (개발용)
+                this.setupPerformanceToggle();
             }
-
+            
             initializeElements() {
-                // 기존 DOM 요소들
+                // DOM 요소들
                 this.inputSection = document.getElementById('inputSection');
                 this.gameCanvasArea = document.getElementById('gameCanvasArea');
                 this.resultArea = document.getElementById('resultArea');
@@ -659,13 +1402,69 @@
                 // 복잡성 모드 버튼들
                 this.complexityBtns = document.querySelectorAll('.complexity-btn');
             }
-
+            
+            setupOptimizedEvents() {
+                // 이벤트 위임 맵 정의
+                const eventMap = {
+                    '.complexity-btn': {
+                        'click': (e) => this.handleComplexityChange(e)
+                    },
+                    '.option-text': {
+                        'input': (e) => this.handleOptionInput(e),
+                        'keypress': (e) => this.handleKeyPress(e)
+                    },
+                    '#startGameBtn': {
+                        'click': () => this.startGame()
+                    },
+                    '#runLadderBtn': {
+                        'click': () => this.runLadder()
+                    },
+                    '#newGameBtn': {
+                        'click': () => this.newGame()
+                    },
+                    '#playAgainBtn': {
+                        'click': () => this.runLadder()
+                    },
+                    '#changeOptionsBtn': {
+                        'click': () => this.changeOptions()
+                    },
+                    '#addOptionBtn': {
+                        'click': () => this.addOption()
+                    },
+                    '#removeOptionBtn': {
+                        'click': () => this.removeOption()
+                    }
+                };
+                
+                // 이벤트 위임 설정
+                this.eventManager.setupEventDelegation(document.body, eventMap);
+                
+                // 리사이즈 이벤트 (쓰로틀링 적용)
+                this.eventManager.addEventListener(
+                    window, 
+                    'resize', 
+                    () => this.handleResize(),
+                    { throttle: 250, passive: true }
+                );
+                
+                // 페이지 언로드 시 정리
+                this.eventManager.addEventListener(
+                    window,
+                    'beforeunload',
+                    () => this.cleanup(),
+                    { once: true }
+                );
+            }
+            
+            initializeCanvasRenderer() {
+                this.canvasRenderer = new OptimizedCanvasRenderer(this.canvas);
+            }
+            
             initializeParticles() {
-                // 배경 파티클 초기화
                 this.setupBackgroundCanvas();
                 this.createBackgroundParticles();
             }
-
+            
             setupBackgroundCanvas() {
                 this.backgroundCanvas.width = window.innerWidth;
                 this.backgroundCanvas.height = window.innerHeight;
@@ -676,46 +1475,45 @@
                     this.createBackgroundParticles();
                 });
             }
-
+            
             createBackgroundParticles() {
                 this.backgroundParticles = [];
-                const particleCount = Math.floor((window.innerWidth * window.innerHeight) / 15000);
+                const particleCount = Math.min(30, Math.floor((window.innerWidth * window.innerHeight) / 20000));
                 
                 for (let i = 0; i < particleCount; i++) {
                     this.backgroundParticles.push({
                         x: Math.random() * window.innerWidth,
                         y: Math.random() * window.innerHeight,
-                        size: Math.random() * 3 + 1,
-                        speedX: (Math.random() - 0.5) * 0.5,
-                        speedY: (Math.random() - 0.5) * 0.5,
-                        opacity: Math.random() * 0.5 + 0.2,
+                        size: Math.random() * 2 + 1,
+                        speedX: (Math.random() - 0.5) * 0.3,
+                        speedY: (Math.random() - 0.5) * 0.3,
+                        opacity: Math.random() * 0.4 + 0.1,
                         pulse: Math.random() * Math.PI * 2
                     });
                 }
             }
-
+            
             startBackgroundAnimation() {
                 const animate = () => {
                     this.updateBackgroundParticles();
+                    this.updateGameParticles();
+                    this.updatePerformanceMonitor();
                     requestAnimationFrame(animate);
                 };
                 animate();
             }
-
+            
             updateBackgroundParticles() {
                 this.backgroundCtx.clearRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
                 
-                this.backgroundParticles.forEach((particle, index) => {
-                    // 파티클 이동
+                this.backgroundParticles.forEach(particle => {
                     particle.x += particle.speedX;
                     particle.y += particle.speedY;
-                    particle.pulse += 0.02;
+                    particle.pulse += 0.01;
                     
-                    // 화면 경계 처리
                     if (particle.x < 0 || particle.x > this.backgroundCanvas.width) particle.speedX *= -1;
                     if (particle.y < 0 || particle.y > this.backgroundCanvas.height) particle.speedY *= -1;
                     
-                    // 파티클 그리기
                     const alpha = particle.opacity * (0.5 + 0.5 * Math.sin(particle.pulse));
                     this.backgroundCtx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
                     this.backgroundCtx.beginPath();
@@ -723,70 +1521,101 @@
                     this.backgroundCtx.fill();
                 });
             }
-
-            bindEvents() {
-                // 복잡성 모드 선택
-                this.complexityBtns.forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        this.complexityBtns.forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.gameMode = btn.dataset.mode;
-                        this.createModeChangeEffect(btn);
-                    });
-                });
-                
-                // 기존 이벤트들
-                this.addOptionBtn.addEventListener('click', () => this.addOption());
-                this.removeOptionBtn.addEventListener('click', () => this.removeOption());
-                this.startGameBtn.addEventListener('click', () => this.startGame());
-                this.runLadderBtn.addEventListener('click', () => this.runLadder());
-                this.newGameBtn.addEventListener('click', () => this.newGame());
-                this.playAgainBtn.addEventListener('click', () => this.runLadder());
-                this.changeOptionsBtn.addEventListener('click', () => this.changeOptions());
-                
-                // 입력 필드 이벤트
-                this.optionsContainer.addEventListener('input', () => this.updateUI());
-                this.optionsContainer.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        this.startGame();
+            
+            updateGameParticles() {
+                this.particleSystem.update();
+                this.particleCtx.clearRect(0, 0, this.particleCanvas.width, this.particleCanvas.height);
+                this.particleSystem.render(this.particleCtx);
+            }
+            
+            updatePerformanceMonitor() {
+                const stats = this.animationSystem.getPerformanceStats();
+                this.performanceMonitor.updateFPS(stats.actualFPS);
+                this.performanceMonitor.updateParticleCount(this.particleSystem.getActiveCount());
+            }
+            
+            setupPerformanceToggle() {
+                // Ctrl + P로 성능 지표 토글
+                document.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 'p') {
+                        e.preventDefault();
+                        this.performanceMonitor.toggle();
                     }
                 });
             }
-
+            
+            // 이벤트 핸들러들
+            handleComplexityChange(event) {
+                const button = event.target;
+                const mode = button.dataset.mode;
+                
+                this.complexityBtns.forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+                this.gameMode = mode;
+                this.createModeChangeEffect(button);
+            }
+            
+            handleOptionInput(event) {
+                this.updateUI();
+            }
+            
+            handleKeyPress(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    this.startGame();
+                }
+            }
+            
+            handleResize() {
+                if (this.canvas) {
+                    this.canvas.width = Math.min(window.innerWidth - 40, 450);
+                    this.canvas.height = Math.min(700, window.innerHeight * 0.7);
+                    
+                    this.particleCanvas.width = this.canvas.width;
+                    this.particleCanvas.height = this.canvas.height;
+                    
+                    this.canvasRenderer.initializeLayers();
+                    
+                    if (this.ladderData) {
+                        this.drawLadder();
+                    }
+                }
+            }
+            
             createModeChangeEffect(button) {
-                // 모드 변경 시 파티클 효과
                 const rect = button.getBoundingClientRect();
                 const centerX = rect.left + rect.width / 2;
                 const centerY = rect.top + rect.height / 2;
                 
-                for (let i = 0; i < 15; i++) {
+                for (let i = 0; i < 8; i++) {
                     const particle = document.createElement('div');
                     particle.style.cssText = `
                         position: fixed;
                         left: ${centerX}px;
                         top: ${centerY}px;
-                        width: 6px;
-                        height: 6px;
+                        width: 4px;
+                        height: 4px;
                         background: linear-gradient(45deg, #667eea, #764ba2);
                         border-radius: 50%;
                         pointer-events: none;
                         z-index: 1000;
-                        animation: modeParticle 1s ease-out forwards;
+                        animation: modeParticle 0.8s ease-out forwards;
                     `;
                     
-                    const angle = (i / 15) * Math.PI * 2;
-                    const distance = 50 + Math.random() * 30;
+                    const angle = (i / 8) * Math.PI * 2;
+                    const distance = 30 + Math.random() * 20;
                     particle.style.setProperty('--dx', Math.cos(angle) * distance + 'px');
                     particle.style.setProperty('--dy', Math.sin(angle) * distance + 'px');
                     
                     document.body.appendChild(particle);
                     
                     setTimeout(() => {
-                        document.body.removeChild(particle);
-                    }, 1000);
+                        if (document.body.contains(particle)) {
+                            document.body.removeChild(particle);
+                        }
+                    }, 800);
                 }
                 
-                // CSS 애니메이션 추가
                 if (!document.getElementById('modeParticleStyle')) {
                     const style = document.createElement('style');
                     style.id = 'modeParticleStyle';
@@ -799,7 +1628,7 @@
                     document.head.appendChild(style);
                 }
             }
-
+            
             addOption() {
                 const currentCount = this.optionsContainer.children.length;
                 if (currentCount >= 8) return;
@@ -814,7 +1643,6 @@
                 this.optionsContainer.appendChild(newOption);
                 this.updateUI();
                 
-                // 새로 추가된 입력 필드에 포커스
                 const newInput = newOption.querySelector('.option-text');
                 setTimeout(() => newInput.focus(), 100);
             }
@@ -831,15 +1659,12 @@
                 const inputs = this.optionsContainer.querySelectorAll('.option-text');
                 const currentCount = inputs.length;
                 
-                // 버튼 상태 업데이트
                 this.addOptionBtn.disabled = currentCount >= 8;
                 this.removeOptionBtn.disabled = currentCount <= 2;
                 
-                // 시작 버튼 활성화 조건 체크
                 const filledOptions = Array.from(inputs).filter(input => input.value.trim() !== '');
                 this.startGameBtn.disabled = filledOptions.length < 2;
                 
-                // 선택지 번호 업데이트
                 inputs.forEach((input, index) => {
                     const numberElement = input.parentElement.querySelector('.option-number');
                     numberElement.textContent = index + 1;
@@ -867,38 +1692,32 @@
                 let ladderHeight;
                 let connectionDensity;
                 
-                // 모드별 설정 (특수효과 제거)
                 switch (this.gameMode) {
                     case 'simple':
-                        ladderHeight = 8 + Math.floor(Math.random() * 4); // 8-12층
+                        ladderHeight = 8 + Math.floor(Math.random() * 4);
                         connectionDensity = 0.4;
                         break;
                     case 'normal':
-                        ladderHeight = 12 + Math.floor(Math.random() * 6); // 12-18층
+                        ladderHeight = 12 + Math.floor(Math.random() * 6);
                         connectionDensity = 0.6;
                         break;
                     case 'extreme':
-                        ladderHeight = (18 + Math.floor(Math.random() * 8)) * 2; // 36-52층
+                        ladderHeight = (18 + Math.floor(Math.random() * 8)) * 2;
                         connectionDensity = 0.8;
                         break;
                 }
                 
-                // 사다리 구조 생성 (특수효과 제거)
                 this.ladderData = {
                     options: this.options,
                     connections: [],
                     height: ladderHeight
                 };
 
-                // 각 층에 대해 가로줄 생성
                 for (let level = 0; level < ladderHeight; level++) {
                     const levelConnections = [];
-                    
-                    // 연속된 가로줄 방지를 위한 배열
                     let lastConnection = -2;
                     
                     for (let i = 0; i < optionCount - 1; i++) {
-                        // 이전 연결과 겹치지 않고, 확률적으로 연결 생성
                         if (i > lastConnection + 1 && Math.random() < connectionDensity) {
                             levelConnections.push(i);
                             lastConnection = i;
@@ -908,7 +1727,6 @@
                     this.ladderData.connections.push(levelConnections);
                 }
                 
-                // 연결성 보장
                 this.ensureAdvancedConnectivity();
             }
 
@@ -921,7 +1739,6 @@
                     const startLevel = section * 4;
                     const endLevel = Math.min(startLevel + 4, connections.length);
                     
-                    // 이 구간에 가로줄이 있는지 확인
                     let hasConnection = false;
                     for (let level = startLevel; level < endLevel; level++) {
                         if (connections[level].length > 0) {
@@ -930,7 +1747,6 @@
                         }
                     }
                     
-                    // 가로줄이 없다면 추가
                     if (!hasConnection && endLevel > startLevel) {
                         const middleLevel = startLevel + Math.floor((endLevel - startLevel) / 2);
                         const randomColumn = Math.floor(Math.random() * (optionCount - 1));
@@ -940,194 +1756,23 @@
             }
 
             drawLadder() {
-                const canvas = this.canvas;
-                const ctx = this.ctx;
-                const options = this.ladderData.options;
-                const connections = this.ladderData.connections;
-                
                 // 캔버스 크기 조정
                 const containerWidth = Math.min(window.innerWidth - 40, 450);
-                canvas.width = containerWidth;
-                canvas.height = Math.min(700, window.innerHeight * 0.7);
+                this.canvas.width = containerWidth;
+                this.canvas.height = Math.min(700, window.innerHeight * 0.7);
                 
-                // 파티클 캔버스 크기도 맞춤
-                this.particleCanvas.width = canvas.width;
-                this.particleCanvas.height = canvas.height;
+                this.particleCanvas.width = this.canvas.width;
+                this.particleCanvas.height = this.canvas.height;
                 
-                // 캔버스 클리어
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // 캔버스 렌더러 레이어 초기화
+                this.canvasRenderer.initializeLayers();
                 
-                // 그리기 변수 설정
-                const padding = 60;
-                const ladderWidth = canvas.width - (padding * 2);
-                const ladderHeight = canvas.height - 160;
-                const columnWidth = ladderWidth / Math.max(1, options.length - 1);
-                const rowHeight = ladderHeight / connections.length;
-                const startY = 100;
+                // 배경과 사다리 미리 렌더링
+                this.canvasRenderer.prerenderBackground();
+                this.canvasRenderer.prerenderLadder(this.ladderData);
                 
-                // 배경 그라데이션
-                const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-                bgGradient.addColorStop(0, 'rgba(102, 126, 234, 0.1)');
-                bgGradient.addColorStop(0.5, 'rgba(156, 136, 255, 0.05)');
-                bgGradient.addColorStop(1, 'rgba(255, 107, 107, 0.1)');
-                ctx.fillStyle = bgGradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                
-                // 세로줄 그리기 (그라데이션 효과)
-                for (let i = 0; i < options.length; i++) {
-                    const x = options.length === 1 ? canvas.width / 2 : padding + (i * columnWidth);
-                    
-                    // 세로줄 그라데이션
-                    const gradient = ctx.createLinearGradient(x, startY, x, startY + ladderHeight);
-                    gradient.addColorStop(0, '#667eea');
-                    gradient.addColorStop(0.5, '#764ba2');
-                    gradient.addColorStop(1, '#9c88ff');
-                    
-                    ctx.strokeStyle = gradient;
-                    ctx.lineWidth = 4;
-                    ctx.shadowColor = 'rgba(102, 126, 234, 0.3)';
-                    ctx.shadowBlur = 8;
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(x, startY);
-                    ctx.lineTo(x, startY + ladderHeight);
-                    ctx.stroke();
-                }
-                
-                ctx.shadowBlur = 0;
-                
-                // 가로줄 그리기 (모든 연결을 일반 연결로)
-                connections.forEach((levelConnections, level) => {
-                    const y = startY + (level + 0.5) * rowHeight;
-                    
-                    levelConnections.forEach(startCol => {
-                        if (startCol < options.length - 1) {
-                            const startX = options.length === 1 ? canvas.width / 2 : padding + (startCol * columnWidth);
-                            const endX = options.length === 1 ? canvas.width / 2 : padding + ((startCol + 1) * columnWidth);
-                            
-                            // 모든 가로줄을 일반 연결로 그리기
-                            this.drawNormalConnection(ctx, startX, endX, y);
-                        }
-                    });
-                });
-                
-                // 상단 시작점
-                this.drawStartPoint(ctx, canvas.width / 2, 40);
-                
-                // 하단 선택지
-                this.drawEndPoints(ctx, options, padding, columnWidth, startY + ladderHeight, canvas.width / 2);
-            }
-
-            drawNormalConnection(ctx, startX, endX, y) {
-                const gradient = ctx.createLinearGradient(startX, y, endX, y);
-                gradient.addColorStop(0, '#764ba2');
-                gradient.addColorStop(0.5, '#9c88ff');
-                gradient.addColorStop(1, '#667eea');
-                
-                ctx.strokeStyle = gradient;
-                ctx.lineWidth = 4;
-                ctx.shadowColor = 'rgba(156, 136, 255, 0.4)';
-                ctx.shadowBlur = 6;
-                
-                ctx.beginPath();
-                ctx.moveTo(startX, y);
-                ctx.lineTo(endX, y);
-                ctx.stroke();
-                
-                ctx.shadowBlur = 0;
-            }
-
-            drawStartPoint(ctx, centerX, y) {
-                // 화려한 시작점
-                const gradient = ctx.createRadialGradient(centerX, y, 0, centerX, y, 30);
-                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                gradient.addColorStop(0.7, 'rgba(102, 126, 234, 0.8)');
-                gradient.addColorStop(1, 'rgba(118, 75, 162, 0.6)');
-                
-                ctx.fillStyle = gradient;
-                ctx.shadowColor = 'rgba(102, 126, 234, 0.6)';
-                ctx.shadowBlur = 15;
-                
-                ctx.beginPath();
-                ctx.arc(centerX, y, 25, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                ctx.shadowBlur = 0;
-                
-                // 시작점 텍스트
-                ctx.fillStyle = '#667eea';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('💕', centerX, y + 8);
-                
-                ctx.fillStyle = '#333';
-                ctx.font = 'bold 12px sans-serif';
-                ctx.fillText('JJ♥UK', centerX, y - 35);
-            }
-
-            drawEndPoints(ctx, options, padding, columnWidth, bottomY, centerX) {
-                options.forEach((option, i) => {
-                    const x = options.length === 1 ? centerX : padding + (i * columnWidth);
-                    
-                    // 화려한 끝점
-                    const gradient = ctx.createRadialGradient(x, bottomY + 35, 0, x, bottomY + 35, 25);
-                    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-                    gradient.addColorStop(0.7, 'rgba(255, 107, 107, 0.8)');
-                    gradient.addColorStop(1, 'rgba(255, 142, 142, 0.6)');
-                    
-                    ctx.fillStyle = gradient;
-                    ctx.shadowColor = 'rgba(255, 107, 107, 0.4)';
-                    ctx.shadowBlur = 10;
-                    
-                    ctx.beginPath();
-                    ctx.arc(x, bottomY + 35, 22, 0, 2 * Math.PI);
-                    ctx.fill();
-                    
-                    // 테두리
-                    ctx.strokeStyle = '#ff6b6b';
-                    ctx.lineWidth = 3;
-                    ctx.stroke();
-                    
-                    ctx.shadowBlur = 0;
-                    
-                    // 번호
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.font = 'bold 16px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText((i + 1).toString(), x, bottomY + 40);
-                    
-                    // 선택지 텍스트
-                    ctx.fillStyle = '#333';
-                    ctx.font = 'bold 12px sans-serif';
-                    const maxWidth = options.length === 1 ? 120 : columnWidth - 10;
-                    this.wrapText(ctx, option, x, bottomY + 70, maxWidth, 16);
-                });
-            }
-
-            wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-                if (ctx.measureText(text).width <= maxWidth) {
-                    ctx.fillText(text, x, y);
-                    return;
-                }
-                
-                const words = text.split('');
-                let line = '';
-                let testLine = '';
-                
-                for (let n = 0; n < words.length; n++) {
-                    testLine = line + words[n];
-                    if (ctx.measureText(testLine).width > maxWidth && line !== '') {
-                        ctx.fillText(line, x, y);
-                        line = words[n];
-                        y += lineHeight;
-                    } else {
-                        line = testLine;
-                    }
-                }
-                ctx.fillText(line, x, y);
+                // 렌더링
+                this.canvasRenderer.render();
             }
 
             runLadder() {
@@ -1137,10 +1782,8 @@
                 this.runLadderBtn.disabled = true;
                 this.resultArea.classList.remove('active');
                 
-                // 파티클 초기화
-                this.particles = [];
+                this.particleSystem.cleanup();
                 
-                // 중앙에서 시작
                 const centerColumn = Math.floor(this.options.length / 2);
                 this.tracePath(centerColumn);
             }
@@ -1161,7 +1804,6 @@
                 const rowHeight = (this.canvas.height - 160) / connections.length;
                 const startY = 100;
                 
-                // 첫 번째 세로줄 위치 추가
                 const firstColumnX = this.options.length === 1 ? this.canvas.width / 2 : padding + (currentColumn * columnWidth);
                 this.selectedPath.push({ 
                     column: currentColumn, 
@@ -1170,16 +1812,12 @@
                     y: startY
                 });
                 
-                // 경로 추적 (특수효과 제거)
                 connections.forEach((levelConnections, level) => {
                     const currentY = startY + (level + 0.5) * rowHeight;
                     
-                    // 현재 위치에서 가로줄이 있는지 확인
                     if (levelConnections.includes(currentColumn)) {
-                        // 오른쪽으로 이동
                         currentColumn = Math.min(currentColumn + 1, this.options.length - 1);
                     } else if (levelConnections.includes(currentColumn - 1)) {
-                        // 왼쪽으로 이동
                         currentColumn = Math.max(currentColumn - 1, 0);
                     }
                     
@@ -1192,7 +1830,6 @@
                     });
                 });
                 
-                // 최종 도착점 추가
                 const finalX = this.options.length === 1 ? this.canvas.width / 2 : padding + (currentColumn * columnWidth);
                 const finalY = startY + (this.canvas.height - 160);
                 this.selectedPath.push({ 
@@ -1202,187 +1839,142 @@
                     y: finalY
                 });
                 
-                // 애니메이션 시작
                 this.currentStep = 0;
-                this.animatePath();
+                this.animatePathOptimized();
             }
 
-            animatePath() {
-                if (this.currentStep >= this.selectedPath.length - 1) {
-                    // 애니메이션 완료
-                    this.isAnimating = false;
-                    this.runLadderBtn.disabled = false;
-                    this.createCelebrationEffect();
-                    setTimeout(() => this.showResult(), 500);
-                    return;
-                }
+            animatePathOptimized() {
+                const totalSteps = this.selectedPath.length - 1;
+                const stepDuration = 200;
                 
-                // 현재 단계 그리기
-                this.drawLadder();
-                this.highlightPath(this.currentStep);
-                this.updateParticles();
-                
-                // 일정한 애니메이션 속도 (특수효과 제거)
-                const delay = 200;
-                
-                this.currentStep++;
-                setTimeout(() => this.animatePath(), delay);
+                this.animationSystem.addAnimation('pathTrace', {
+                    duration: totalSteps * stepDuration,
+                    onUpdate: (progress) => {
+                        const targetStep = Math.floor(progress * totalSteps);
+                        
+                        if (targetStep > this.currentStep) {
+                            this.currentStep = targetStep;
+                            
+                            this.canvasRenderer.render((ctx) => {
+                                this.drawAnimatedPath(ctx, this.currentStep, progress);
+                            });
+                            
+                            if (this.currentStep < this.selectedPath.length - 1) {
+                                const currentPos = this.selectedPath[this.currentStep + 1];
+                                this.particleSystem.addParticle({
+                                    x: currentPos.x,
+                                    y: currentPos.y,
+                                    vx: (Math.random() - 0.5) * 2,
+                                    vy: -Math.random() * 2,
+                                    size: 2 + Math.random(),
+                                    color: '#ff6b6b',
+                                    life: 0.8,
+                                    decay: 0.03
+                                });
+                            }
+                        }
+                    },
+                    onComplete: () => {
+                        this.isAnimating = false;
+                        this.runLadderBtn.disabled = false;
+                        this.createCelebrationEffect();
+                        
+                        setTimeout(() => {
+                            this.showResult();
+                        }, 500);
+                    }
+                });
             }
 
-            highlightPath(step) {
-                const ctx = this.ctx;
-                const path = this.selectedPath.slice(0, step + 2);
+            drawAnimatedPath(ctx, currentStep, overallProgress) {
+                const path = this.selectedPath;
                 
-                // 경로 그리기 (심플한 단색 트레일)
-                for (let i = 0; i < path.length - 1; i++) {
+                for (let i = 0; i < Math.min(currentStep + 1, path.length - 1); i++) {
                     const current = path[i];
                     const next = path[i + 1];
                     
-                    // 심플한 단색 트레일
-                    ctx.strokeStyle = '#ff6b6b';
-                    ctx.lineWidth = 5;
-                    ctx.shadowColor = 'rgba(255, 107, 107, 0.4)';
-                    ctx.shadowBlur = 6;
-                    ctx.lineCap = 'round';
+                    const segmentProgress = i < currentStep ? 1 : 
+                        (overallProgress * (path.length - 1)) - i;
                     
-                    ctx.beginPath();
-                    ctx.moveTo(current.x, current.y);
-                    ctx.lineTo(next.x, next.y);
-                    ctx.stroke();
-                    
-                    // 파티클 생성 (마지막 단계에서만)
-                    if (i === path.length - 2) {
-                        this.createTrailParticles(next.x, next.y);
-                    }
+                    this.drawPathSegment(ctx, current, next, Math.min(1, segmentProgress));
                 }
+                
+                if (currentStep < path.length - 1) {
+                    const currentPos = path[currentStep + 1];
+                    this.drawAnimatedMarker(ctx, currentPos.x, currentPos.y, overallProgress);
+                }
+            }
+
+            drawPathSegment(ctx, start, end, progress) {
+                if (progress <= 0) return;
+                
+                const x1 = start.x;
+                const y1 = start.y;
+                const x2 = start.x + (end.x - start.x) * progress;
+                const y2 = start.y + (end.y - start.y) * progress;
+                
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 5;
+                ctx.shadowColor = 'rgba(255, 107, 107, 0.4)';
+                ctx.shadowBlur = 6;
+                ctx.lineCap = 'round';
+                
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
                 
                 ctx.shadowBlur = 0;
-                
-                // 현재 위치에 심플한 마커
-                if (step < path.length - 1) {
-                    const current = path[step + 1];
-                    
-                    // 심플한 원형 마커
-                    ctx.fillStyle = '#ff6b6b';
-                    ctx.shadowColor = '#ff6b6b';
-                    ctx.shadowBlur = 8;
-                    
-                    ctx.beginPath();
-                    ctx.arc(current.x, current.y, 12, 0, 2 * Math.PI);
-                    ctx.fill();
-                    
-                    // 작은 하트
-                    ctx.fillStyle = 'white';
-                    ctx.font = 'bold 14px sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.shadowBlur = 0;
-                    ctx.fillText('💕', current.x, current.y + 4);
-                }
             }
 
-            createTrailParticles(x, y) {
-                const particleCount = 2; // 고정된 파티클 수
+            drawAnimatedMarker(ctx, x, y, progress) {
+                const pulseScale = 1 + 0.2 * Math.sin(progress * Math.PI * 4);
                 
-                for (let i = 0; i < particleCount; i++) {
-                    const angle = (Math.PI * 2 * i) / particleCount;
-                    const speed = 1 + Math.random() * 2;
-                    const size = 2 + Math.random() * 2;
-                    
-                    this.particles.push({
-                        x: x,
-                        y: y,
-                        vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed,
-                        size: size,
-                        color: '#ff6b6b', // 고정된 핑크색
-                        life: 0.8,
-                        decay: 0.03 + Math.random() * 0.02
-                    });
-                }
-            }
-
-            updateParticles() {
-                const pCtx = this.particleCtx;
-                pCtx.clearRect(0, 0, this.particleCanvas.width, this.particleCanvas.height);
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.scale(pulseScale, pulseScale);
                 
-                for (let i = this.particles.length - 1; i >= 0; i--) {
-                    const particle = this.particles[i];
-                    
-                    // 파티클 업데이트
-                    particle.x += particle.vx;
-                    particle.y += particle.vy;
-                    particle.vy += 0.05; // 약한 중력
-                    particle.life -= particle.decay;
-                    
-                    if (particle.life <= 0) {
-                        this.particles.splice(i, 1);
-                        continue;
-                    }
-                    
-                    // 파티클 그리기
-                    pCtx.save();
-                    pCtx.globalAlpha = particle.life;
-                    
-                    if (particle.symbol) {
-                        // 이모지 파티클 (하트, 별)
-                        pCtx.font = `${particle.size * 3}px sans-serif`;
-                        pCtx.textAlign = 'center';
-                        pCtx.fillStyle = particle.color;
-                        pCtx.shadowColor = particle.color;
-                        pCtx.shadowBlur = 5;
-                        pCtx.fillText(particle.symbol, particle.x, particle.y);
-                    } else {
-                        // 일반 원형 파티클
-                        pCtx.fillStyle = particle.color;
-                        pCtx.shadowColor = particle.color;
-                        pCtx.shadowBlur = 8;
-                        
-                        pCtx.beginPath();
-                        pCtx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-                        pCtx.fill();
-                    }
-                    pCtx.restore();
-                }
+                ctx.fillStyle = '#ff6b6b';
+                ctx.shadowColor = '#ff6b6b';
+                ctx.shadowBlur = 8;
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, 12, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 0;
+                ctx.fillText('💕', 0, 4);
+                
+                ctx.restore();
             }
 
             createCelebrationEffect() {
-                // 결과 발표 전 은은한 하트 파티클 효과 (수량 감소)
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
                 
-                // 부드러운 하트 파티클 생성 (개수 감소)
-                for (let i = 0; i < 8; i++) { // 15개에서 8개로 감소
+                for (let i = 0; i < 6; i++) {
                     setTimeout(() => {
-                        const angle = (Math.PI * 2 * i) / 8;
-                        const radius = 60 + Math.random() * 30; // 반경도 감소
+                        const angle = (Math.PI * 2 * i) / 6;
+                        const radius = 50;
                         const x = centerX + Math.cos(angle) * radius;
                         const y = centerY + Math.sin(angle) * radius;
                         
-                        // 하트 모양 파티클 (개수 감소)
-                        for (let j = 0; j < 2; j++) { // 3개에서 2개로 감소
-                            this.particles.push({
-                                x: x + (Math.random() - 0.5) * 15,
-                                y: y + (Math.random() - 0.5) * 15,
-                                vx: (Math.random() - 0.5) * 1.5,
-                                vy: -Math.random() * 2 - 0.5,
-                                size: 3 + Math.random() * 2,
-                                color: Math.random() > 0.5 ? '#ff6b6b' : '#ff8e8e',
-                                life: 1.5,
-                                decay: 0.015,
-                                symbol: Math.random() > 0.6 ? '💖' : '✨'
-                            });
-                        }
-                    }, i * 80); // 50ms에서 80ms로 간격 증가
+                        this.particleSystem.addParticle({
+                            x: x,
+                            y: y,
+                            vx: (Math.random() - 0.5) * 1.5,
+                            vy: -Math.random() * 2,
+                            size: 4,
+                            color: '#ff6b6b',
+                            life: 1.5,
+                            decay: 0.015,
+                            symbol: '💖'
+                        });
+                    }, i * 100);
                 }
-                
-                // 계속해서 파티클 업데이트
-                const updateCelebration = () => {
-                    this.updateParticles();
-                    if (this.particles.length > 0) {
-                        requestAnimationFrame(updateCelebration);
-                    }
-                };
-                updateCelebration();
             }
 
             showResult() {
@@ -1392,7 +1984,6 @@
                 this.resultOption.textContent = `${selectedOption} 💕`;
                 this.resultArea.classList.add('active');
                 
-                // 결과 애니메이션 - 은은한 하트비트
                 this.resultOption.style.animation = 'none';
                 setTimeout(() => {
                     this.resultOption.style.animation = 'heartBeat 1.5s ease-in-out 3';
@@ -1411,18 +2002,32 @@
                 this.resultArea.classList.remove('active');
                 this.isAnimating = false;
                 this.runLadderBtn.disabled = false;
-                this.particles = [];
-                this.particleCtx.clearRect(0, 0, this.particleCanvas.width, this.particleCanvas.height);
+                this.particleSystem.cleanup();
+                this.animationSystem.stopAllAnimations();
             }
 
             changeOptions() {
                 this.newGame();
             }
+            
+            cleanup() {
+                this.eventManager.cleanup();
+                this.particleSystem.cleanup();
+                this.canvasRenderer.cleanup();
+                this.animationSystem.stopAllAnimations();
+            }
         }
 
         // 게임 초기화
         document.addEventListener('DOMContentLoaded', () => {
-            new UltimateLadderGame();
+            window.ladderGameInstance = new OptimizedUltimateLadderGame();
+        });
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (window.ladderGameInstance) {
+                window.ladderGameInstance.cleanup();
+            }
         });
     </script>
 </body>
