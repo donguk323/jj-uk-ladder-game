@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>진주♥동욱 사다리 게임</title>
+    <style>
+        /* 기본 리셋 및 폰트 설정 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        /* 컨테이너 */
+        .container {
+            max-width: 100vw;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 헤더 */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #667eea, #764ba2, #9c88ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        .couple-name {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.9);
+            font-weight: 300;
+        }
+
+        /* 메인 게임 영역 */
+        .game-area {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+            padding: 30px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 입력 섹션 */
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #444;
+            text-align: center;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .option-number {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .option-text {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+            outline: none;
+        }
+
+        .option-text:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .option-text::placeholder {
+            color: #a5b3ff;
+        }
+
+        /* 버튼 영역 */
+        .button-area {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            outline: none;
+            text-transform: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #fff0f0;
+            color: #ff6b6b;
+            border: 2px solid #ff6b6b;
+        }
+
+        .btn-secondary:hover {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .add-remove-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .add-remove-buttons .btn {
+            flex: 1;
+            padding: 12px;
+            font-size: 1rem;
+        }
+
+        /* 게임 캔버스 영역 */
+        .game-canvas-area {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-height: 400px;
+        }
+
+        .game-canvas-area.active {
+            display: flex;
+        }
+
+        #gameCanvas {
+            border: 2px solid #ffe0e0;
+            border-radius: 12px;
+            background: #fafafa;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .game-controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        /* 결과 영역 */
+        .result-area {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #fff0f0 0%, #ffe8e8 100%);
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 2px solid #ffe0e0;
+        }
+
+        .result-area.active {
+            display: block;
+        }
+
+        .result-text {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-option {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ff6b6b;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin: 10px 0;
+            box-shadow: 0 4px 15px rgba(255,107,107,0.2);
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 480px) {
+            .container {
+                padding: 15px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .couple-name {
+                font-size: 1.5rem;
+            }
+
+            .game-area {
+                padding: 20px 15px;
+            }
+
+            .option-number {
+                width: 30px;
+                height: 30px;
+                font-size: 0.8rem;
+            }
+
+            .option-text {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                font-size: 1rem;
+            }
+        }
+
+        /* 애니메이션 */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
+            50% {
+                box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+            }
+            100% {
+                box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            }
+        }
+
+        .heart-beat {
+            animation: heartBeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+
+        /* PWA 설치 버튼 */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: none;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: none;
+            font-size: 0.9rem;
+        }
+
+        .install-prompt:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 12px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .install-prompt.show {
+            display: block;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* 오프라인 표시 */
+        .offline-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: none;
+            z-index: 1000;
+            animation: pulse 2s infinite;
+        }
+
+        .offline-indicator.show {
+            display: block;
+        }
+
+        /* 히스토리 버튼 */
+        .history-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 12px;
+            border: 1px solid #e0e6ff;
+        }
+
+        .history-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            background: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e0e6ff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .history-item:hover {
+            background: #667eea;
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .history-item-date {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        .clear-history-btn {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .clear-history-btn:hover {
+            background: #ff5252;
+            transform: translateY(-1px);
+        }
+
+        /* 임시 메시지 애니메이션 */
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        /* 향상된 스크롤바 스타일 */
+        .history-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .history-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 2px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 2px;
+        }
+
+        .history-list::-webkit-scrollbar-thumb:hover {
+            background: #5a6fd8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 오프라인 표시 -->
+        <div class="offline-indicator" id="offlineIndicator">
+            📵 오프라인 모드
+        </div>
+
+        <!-- PWA 설치 버튼 -->
+        <button class="install-prompt" id="installPrompt">
+            📱 홈 화면에 추가하기
+        </button>
+
+        <!-- 헤더 -->
+        <header class="header">
+            <h1 class="title">💕 사다리 게임</h1>
+            <div class="couple-name heart-beat">JJ♥UK</div>
+            <p class="subtitle">우리만의 특별한 선택 게임 💖</p>
+        </header>
+
+        <!-- 메인 게임 영역 -->
+        <main class="game-area">
+            <!-- 입력 섹션 -->
+            <section class="input-section" id="inputSection">
+                <h2 class="section-title">💝 오늘의 선택지를 입력해주세요</h2>
+                
+                <div class="options-container" id="optionsContainer">
+                    <div class="option-input">
+                        <div class="option-number">1</div>
+                        <input type="text" class="option-text" placeholder="예: 한식당 🍚" maxlength="20">
+                    </div>
+                    <div class="option-input">
+                        <div class="option-number">2</div>
+                        <input type="text" class="option-text" placeholder="예: 중식당 🥟" maxlength="20">
+                    </div>
+                    <div class="option-input">
+                        <div class="option-number">3</div>
+                        <input type="text" class="option-text" placeholder="예: 일식당 🍣" maxlength="20">
+                    </div>
+                </div>
+
+                <div class="add-remove-buttons">
+                    <button class="btn btn-secondary" id="removeOptionBtn">선택지 제거 ➖</button>
+                    <button class="btn btn-secondary" id="addOptionBtn">선택지 추가 ➕</button>
+                </div>
+
+                <div class="button-area">
+                    <button class="btn btn-primary pulse" id="startGameBtn">
+                        💖 사다리 게임 시작!
+                    </button>
+                </div>
+
+                <!-- 히스토리 섹션 -->
+                <div class="history-section" id="historySection">
+                    <div class="history-title">🕐 최근 선택지</div>
+                    <div class="history-list" id="historyList"></div>
+                    <button class="clear-history-btn" id="clearHistoryBtn" style="display: none;">
+                        🗑️ 기록 삭제
+                    </button>
+                </div>
+            </section>
+
+            <!-- 게임 캔버스 영역 -->
+            <section class="game-canvas-area" id="gameCanvasArea">
+                <canvas id="gameCanvas" width="350" height="400"></canvas>
+                <div class="game-controls">
+                    <button class="btn btn-primary" id="runLadderBtn">
+                        🏃‍♀️💨 JJ♥UK 출발!
+                    </button>
+                    <button class="btn btn-secondary" id="newGameBtn">
+                        🔄 새 게임
+                    </button>
+                </div>
+            </section>
+
+            <!-- 결과 영역 -->
+            <section class="result-area" id="resultArea">
+                <div class="result-text">🎉 JJ♥UK의 선택!</div>
+                <div class="result-option" id="resultOption"></div>
+                <div class="button-area">
+                    <button class="btn btn-primary" id="playAgainBtn">
+                        🎲 다시 선택하기
+                    </button>
+                    <button class="btn btn-secondary" id="changeOptionsBtn">
+                        ✏️ 선택지 변경
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // 커플 전용 사다리 게임 with PWA
+        class CoupleLadderGame {
+            constructor() {
+                this.options = [];
+                this.ladderData = null;
+                this.canvas = null;
+                this.ctx = null;
+                this.isAnimating = false;
+                this.selectedPath = [];
+                this.currentStep = 0;
+                this.deferredPrompt = null;
+                this.history = [];
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.initializePWA();
+                this.loadHistory();
+                this.updateUI();
+                this.checkNetworkStatus();
+            }
+
+            initializeElements() {
+                // 기존 DOM 요소들
+                this.inputSection = document.getElementById('inputSection');
+                this.gameCanvasArea = document.getElementById('gameCanvasArea');
+                this.resultArea = document.getElementById('resultArea');
+                this.optionsContainer = document.getElementById('optionsContainer');
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 기존 버튼들
+                this.addOptionBtn = document.getElementById('addOptionBtn');
+                this.removeOptionBtn = document.getElementById('removeOptionBtn');
+                this.startGameBtn = document.getElementById('startGameBtn');
+                this.runLadderBtn = document.getElementById('runLadderBtn');
+                this.newGameBtn = document.getElementById('newGameBtn');
+                this.playAgainBtn = document.getElementById('playAgainBtn');
+                this.changeOptionsBtn = document.getElementById('changeOptionsBtn');
+                
+                // 새로운 PWA 및 히스토리 요소들
+                this.installPrompt = document.getElementById('installPrompt');
+                this.offlineIndicator = document.getElementById('offlineIndicator');
+                this.historySection = document.getElementById('historySection');
+                this.historyList = document.getElementById('historyList');
+                this.clearHistoryBtn = document.getElementById('clearHistoryBtn');
+                
+                // 결과 표시
+                this.resultOption = document.getElementById('resultOption');
+            }
+
+            // PWA 초기화
+            initializePWA() {
+                this.createManifest();
+                this.registerServiceWorker();
+                this.setupInstallPrompt();
+            }
+
+            createManifest() {
+                const manifest = {
+                    name: "JJ♥UK 사다리 게임",
+                    short_name: "JJ♥UK 사다리",
+                    description: "JJ♥UK만의 특별한 사다리 게임",
+                    start_url: "/",
+                    display: "standalone",
+                    background_color: "#667eea",
+                    theme_color: "#667eea",
+                    orientation: "portrait",
+                    icons: [
+                        {
+                            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%23667eea' rx='20'/><text x='96' y='140' font-size='120' text-anchor='middle' fill='white'>💕</text></svg>",
+                            sizes: "192x192",
+                            type: "image/svg+xml",
+                            purpose: "any maskable"
+                        },
+                        {
+                            src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%23667eea' rx='60'/><text x='256' y='380' font-size='320' text-anchor='middle' fill='white'>💕</text></svg>",
+                            sizes: "512x512",
+                            type: "image/svg+xml",
+                            purpose: "any maskable"
+                        }
+                    ]
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const manifestURL = URL.createObjectURL(manifestBlob);
+                document.getElementById('manifest-placeholder').href = manifestURL;
+            }
+
+            registerServiceWorker() {
+                if ('serviceWorker' in navigator) {
+                    // Service Worker 코드를 인라인으로 생성
+                    const swCode = `
+                        const CACHE_NAME = 'jj-uk-ladder-v1';
+                        const urlsToCache = [
+                            '/',
+                            '/index.html'
+                        ];
+
+                        self.addEventListener('install', event => {
+                            event.waitUntil(
+                                caches.open(CACHE_NAME)
+                                    .then(cache => cache.addAll(urlsToCache))
+                            );
+                        });
+
+                        self.addEventListener('fetch', event => {
+                            event.respondWith(
+                                caches.match(event.request)
+                                    .then(response => {
+                                        if (response) {
+                                            return response;
+                                        }
+                                        return fetch(event.request);
+                                    })
+                            );
+                        });
+                    `;
+
+                    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                    const swURL = URL.createObjectURL(swBlob);
+                    
+                    navigator.serviceWorker.register(swURL)
+                        .then(registration => {
+                            console.log('SW 등록 성공:', registration);
+                        })
+                        .catch(error => {
+                            console.log('SW 등록 실패:', error);
+                        });
+                }
+            }
+
+            setupInstallPrompt() {
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    this.deferredPrompt = e;
+                    this.installPrompt.classList.add('show');
+                });
+
+                this.installPrompt.addEventListener('click', () => {
+                    if (this.deferredPrompt) {
+                        this.deferredPrompt.prompt();
+                        this.deferredPrompt.userChoice.then((choiceResult) => {
+                            if (choiceResult.outcome === 'accepted') {
+                                console.log('앱 설치됨');
+                            }
+                            this.deferredPrompt = null;
+                            this.installPrompt.classList.remove('show');
+                        });
+                    }
+                });
+
+                window.addEventListener('appinstalled', () => {
+                    this.installPrompt.classList.remove('show');
+                });
+            }
+
+            checkNetworkStatus() {
+                const updateOnlineStatus = () => {
+                    if (navigator.onLine) {
+                        this.offlineIndicator.classList.remove('show');
+                    } else {
+                        this.offlineIndicator.classList.add('show');
+                    }
+                };
+
+                window.addEventListener('online', updateOnlineStatus);
+                window.addEventListener('offline', updateOnlineStatus);
+                updateOnlineStatus();
+            }
+
+            // 히스토리 관리
+            loadHistory() {
+                try {
+                    const saved = localStorage.getItem('jj-uk-ladder-history');
+                    this.history = saved ? JSON.parse(saved) : [];
+                    this.updateHistoryDisplay();
+                } catch (e) {
+                    this.history = [];
+                }
+            }
+
+            saveHistory() {
+                try {
+                    localStorage.setItem('jj-uk-ladder-history', JSON.stringify(this.history));
+                } catch (e) {
+                    console.log('히스토리 저장 실패');
+                }
+            }
+
+            addToHistory(options) {
+                const historyItem = {
+                    options: [...options],
+                    date: new Date().toLocaleString('ko-KR', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }),
+                    timestamp: Date.now()
+                };
+
+                // 중복 제거 (동일한 선택지 조합)
+                this.history = this.history.filter(item => 
+                    JSON.stringify(item.options.sort()) !== JSON.stringify(options.sort())
+                );
+
+                this.history.unshift(historyItem);
+                this.history = this.history.slice(0, 5); // 최대 5개까지 저장
+                this.saveHistory();
+                this.updateHistoryDisplay();
+            }
+
+            updateHistoryDisplay() {
+                if (this.history.length === 0) {
+                    this.historyList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">아직 히스토리가 없습니다</div>';
+                    this.clearHistoryBtn.style.display = 'none';
+                    return;
+                }
+
+                this.historyList.innerHTML = this.history.map(item => `
+                    <div class="history-item" data-options='${JSON.stringify(item.options)}'>
+                        <div>${item.options.join(', ')}</div>
+                        <div class="history-item-date">${item.date}</div>
+                    </div>
+                `).join('');
+
+                this.clearHistoryBtn.style.display = 'block';
+
+                // 히스토리 아이템 클릭 이벤트
+                this.historyList.querySelectorAll('.history-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const options = JSON.parse(item.dataset.options);
+                        this.loadFromHistory(options);
+                    });
+                });
+            }
+
+            loadFromHistory(options) {
+                // 기존 입력 필드 초기화
+                this.optionsContainer.innerHTML = '';
+                
+                // 선택지만큼 입력 필드 생성
+                options.forEach((option, index) => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'option-input fade-in';
+                    optionElement.innerHTML = `
+                        <div class="option-number">${index + 1}</div>
+                        <input type="text" class="option-text" value="${option}" maxlength="20">
+                    `;
+                    this.optionsContainer.appendChild(optionElement);
+                });
+
+                this.updateUI();
+                
+                // 성공 피드백
+                this.showTemporaryMessage('히스토리에서 불러왔습니다! 💕');
+            }
+
+            showTemporaryMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #667eea;
+                    color: white;
+                    padding: 15px 25px;
+                    border-radius: 25px;
+                    font-weight: 600;
+                    z-index: 1001;
+                    animation: fadeInOut 2s ease-in-out;
+                `;
+                messageDiv.textContent = message;
+                document.body.appendChild(messageDiv);
+
+                setTimeout(() => {
+                    document.body.removeChild(messageDiv);
+                }, 2000);
+            }
+
+            clearHistory() {
+                this.history = [];
+                this.saveHistory();
+                this.updateHistoryDisplay();
+                this.showTemporaryMessage('히스토리가 삭제되었습니다');
+            }
+
+            bindEvents() {
+                // 기존 선택지 추가/제거
+                this.addOptionBtn.addEventListener('click', () => this.addOption());
+                this.removeOptionBtn.addEventListener('click', () => this.removeOption());
+                
+                // 게임 시작
+                this.startGameBtn.addEventListener('click', () => this.startGame());
+                
+                // 사다리 실행
+                this.runLadderBtn.addEventListener('click', () => this.runLadder());
+                
+                // 게임 재시작
+                this.newGameBtn.addEventListener('click', () => this.newGame());
+                this.playAgainBtn.addEventListener('click', () => this.runLadder());
+                this.changeOptionsBtn.addEventListener('click', () => this.changeOptions());
+                
+                // 히스토리 기능
+                this.clearHistoryBtn.addEventListener('click', () => {
+                    if (confirm('정말 모든 히스토리를 삭제하시겠습니까?')) {
+                        this.clearHistory();
+                    }
+                });
+                
+                // 입력 필드 이벤트
+                this.optionsContainer.addEventListener('input', () => this.updateUI());
+                this.optionsContainer.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.startGame();
+                    }
+                });
+            }
+
+            addOption() {
+                const currentCount = this.optionsContainer.children.length;
+                if (currentCount >= 8) return;
+
+                const newOption = document.createElement('div');
+                newOption.className = 'option-input fade-in';
+                newOption.innerHTML = `
+                    <div class="option-number">${currentCount + 1}</div>
+                    <input type="text" class="option-text" placeholder="선택지 ${currentCount + 1} 💫" maxlength="20">
+                `;
+                
+                this.optionsContainer.appendChild(newOption);
+                this.updateUI();
+                
+                // 새로 추가된 입력 필드에 포커스
+                const newInput = newOption.querySelector('.option-text');
+                setTimeout(() => newInput.focus(), 100);
+            }
+
+            removeOption() {
+                const currentCount = this.optionsContainer.children.length;
+                if (currentCount <= 2) return;
+
+                this.optionsContainer.removeChild(this.optionsContainer.lastElementChild);
+                this.updateUI();
+            }
+
+            updateUI() {
+                const inputs = this.optionsContainer.querySelectorAll('.option-text');
+                const currentCount = inputs.length;
+                
+                // 버튼 상태 업데이트
+                this.addOptionBtn.disabled = currentCount >= 8;
+                this.removeOptionBtn.disabled = currentCount <= 2;
+                
+                // 시작 버튼 활성화 조건 체크
+                const filledOptions = Array.from(inputs).filter(input => input.value.trim() !== '');
+                this.startGameBtn.disabled = filledOptions.length < 2;
+                
+                // 선택지 번호 업데이트
+                inputs.forEach((input, index) => {
+                    const numberElement = input.parentElement.querySelector('.option-number');
+                    numberElement.textContent = index + 1;
+                });
+            }
+
+            getOptionsFromInputs() {
+                const inputs = this.optionsContainer.querySelectorAll('.option-text');
+                return Array.from(inputs)
+                    .map(input => input.value.trim())
+                    .filter(value => value !== '');
+            }
+
+            startGame() {
+                this.options = this.getOptionsFromInputs();
+                if (this.options.length < 2) return;
+
+                // 히스토리에 추가
+                this.addToHistory(this.options);
+
+                this.generateLadder();
+                this.drawLadder();
+                this.showGameCanvas();
+            }
+
+            generateLadder() {
+                const optionCount = this.options.length;
+                const ladderHeight = 12; // 사다리 층 개수 조정
+                
+                // 사다리 구조 생성
+                this.ladderData = {
+                    options: this.options,
+                    connections: []
+                };
+
+                // 각 층에 대해 가로줄 생성 (개선된 알고리즘)
+                for (let level = 0; level < ladderHeight; level++) {
+                    const levelConnections = [];
+                    
+                    // 각 칸에 대해 개별적으로 가로줄 생성 여부 결정
+                    for (let i = 0; i < optionCount - 1; i++) {
+                        // 이전에 가로줄이 생성되지 않았다면 50% 확률로 생성
+                        if (!levelConnections.includes(i - 1) && Math.random() < 0.5) {
+                            levelConnections.push(i);
+                        }
+                    }
+                    
+                    this.ladderData.connections.push(levelConnections);
+                }
+                
+                // 최소한의 연결성 보장 - 각 구간에 최소 1개의 가로줄
+                this.ensureConnectivity();
+            }
+
+            ensureConnectivity() {
+                const connections = this.ladderData.connections;
+                const optionCount = this.options.length;
+                const sectionsCount = Math.ceil(connections.length / 3); // 3층씩 구간 나누기
+                
+                for (let section = 0; section < sectionsCount; section++) {
+                    const startLevel = section * 3;
+                    const endLevel = Math.min(startLevel + 3, connections.length);
+                    
+                    // 이 구간에 가로줄이 있는지 확인
+                    let hasConnection = false;
+                    for (let level = startLevel; level < endLevel; level++) {
+                        if (connections[level].length > 0) {
+                            hasConnection = true;
+                            break;
+                        }
+                    }
+                    
+                    // 가로줄이 없다면 중간 층에 하나 추가
+                    if (!hasConnection && endLevel > startLevel) {
+                        const middleLevel = startLevel + Math.floor((endLevel - startLevel) / 2);
+                        const randomColumn = Math.floor(Math.random() * (optionCount - 1));
+                        connections[middleLevel].push(randomColumn);
+                    }
+                }
+            }
+
+            drawLadder() {
+                const canvas = this.canvas;
+                const ctx = this.ctx;
+                const options = this.ladderData.options;
+                const connections = this.ladderData.connections;
+                
+                // 캔버스 크기 조정
+                const containerWidth = Math.min(window.innerWidth - 40, 400);
+                canvas.width = containerWidth;
+                canvas.height = 500; // 높이 적절히 조정
+                
+                // 캔버스 클리어
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 그리기 변수 설정
+                const padding = 50;
+                const ladderWidth = canvas.width - (padding * 2);
+                const ladderHeight = 320; // 사다리 높이 조정
+                const columnWidth = ladderWidth / Math.max(1, options.length - 1);
+                const rowHeight = ladderHeight / connections.length;
+                const startY = 80;
+                
+                ctx.lineCap = 'round';
+                
+                // 세로줄 그리기 (연속적으로)
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 3;
+                
+                for (let i = 0; i < options.length; i++) {
+                    const x = options.length === 1 ? canvas.width / 2 : padding + (i * columnWidth);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x, startY);
+                    ctx.lineTo(x, startY + ladderHeight);
+                    ctx.stroke();
+                }
+                
+                // 가로줄 그리기 (세로줄과 정확히 연결)
+                ctx.strokeStyle = '#764ba2';
+                ctx.lineWidth = 3;
+                
+                connections.forEach((levelConnections, level) => {
+                    const y = startY + (level + 0.5) * rowHeight;
+                    
+                    levelConnections.forEach(startCol => {
+                        if (startCol < options.length - 1) {
+                            const startX = options.length === 1 ? canvas.width / 2 : padding + (startCol * columnWidth);
+                            const endX = options.length === 1 ? canvas.width / 2 : padding + ((startCol + 1) * columnWidth);
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(startX, y);
+                            ctx.lineTo(endX, y);
+                            ctx.stroke();
+                        }
+                    });
+                });
+                
+                // 상단에 "JJ♥UK" 표시
+                const centerX = canvas.width / 2;
+                
+                // 하트 모양 시작점
+                ctx.fillStyle = '#667eea';
+                ctx.font = 'bold 24px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('💕', centerX, 35);
+                
+                // 커플 이름
+                ctx.fillStyle = '#667eea';
+                ctx.font = 'bold 14px sans-serif';
+                ctx.fillText('JJ♥UK', centerX, 55);
+                
+                // 시작점에서 중앙 세로줄까지 연결선
+                let startColumnX;
+                if (options.length === 1) {
+                    startColumnX = centerX;
+                } else {
+                    const centerColumn = Math.floor(options.length / 2);
+                    startColumnX = padding + (centerColumn * columnWidth);
+                }
+                
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, 60);
+                ctx.lineTo(startColumnX, startY);
+                ctx.stroke();
+                
+                // 하단에 선택지 텍스트 그리기
+                ctx.textAlign = 'center';
+                
+                options.forEach((option, i) => {
+                    const x = options.length === 1 ? centerX : padding + (i * columnWidth);
+                    
+                    // 배경 원
+                    ctx.fillStyle = '#f0f3ff';
+                    ctx.beginPath();
+                    ctx.arc(x, startY + ladderHeight + 30, 20, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // 테두리
+                    ctx.strokeStyle = '#667eea';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // 번호
+                    ctx.fillStyle = '#667eea';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.fillText((i + 1).toString(), x, startY + ladderHeight + 35);
+                    
+                    // 선택지 텍스트
+                    ctx.fillStyle = '#333';
+                    ctx.font = 'bold 11px sans-serif';
+                    const maxWidth = options.length === 1 ? 100 : columnWidth - 10;
+                    this.wrapText(ctx, option, x, startY + ladderHeight + 55, maxWidth, 14);
+                });
+            }
+
+            wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+                if (ctx.measureText(text).width <= maxWidth) {
+                    ctx.fillText(text, x, y);
+                    return;
+                }
+                
+                // 텍스트가 길면 줄바꿈
+                const words = text.split('');
+                let line = '';
+                let testLine = '';
+                
+                for (let n = 0; n < words.length; n++) {
+                    testLine = line + words[n];
+                    if (ctx.measureText(testLine).width > maxWidth && line !== '') {
+                        ctx.fillText(line, x, y);
+                        line = words[n];
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, x, y);
+            }
+
+            runLadder() {
+                if (this.isAnimating) return;
+                
+                this.isAnimating = true;
+                this.runLadderBtn.disabled = true;
+                this.resultArea.classList.remove('active');
+                
+                // 중앙에서 시작
+                const centerColumn = Math.floor(this.options.length / 2);
+                this.tracePath(centerColumn);
+            }
+
+            tracePath(startColumn) {
+                const connections = this.ladderData.connections;
+                let currentColumn = startColumn;
+                this.selectedPath = [{ column: currentColumn, level: -1, x: this.canvas.width / 2, y: 60 }];
+                
+                const padding = 50;
+                const ladderWidth = this.canvas.width - (padding * 2);
+                const columnWidth = this.options.length === 1 ? 0 : ladderWidth / (this.options.length - 1);
+                const rowHeight = 320 / connections.length; // 높이 조정
+                const startY = 80;
+                
+                // 첫 번째 세로줄 위치 추가
+                const firstColumnX = this.options.length === 1 ? this.canvas.width / 2 : padding + (currentColumn * columnWidth);
+                this.selectedPath.push({ 
+                    column: currentColumn, 
+                    level: -0.5, 
+                    x: firstColumnX, 
+                    y: startY 
+                });
+                
+                // 경로 추적
+                connections.forEach((levelConnections, level) => {
+                    const currentY = startY + (level + 0.5) * rowHeight;
+                    
+                    // 현재 위치에서 가로줄이 있는지 확인
+                    if (levelConnections.includes(currentColumn)) {
+                        // 오른쪽으로 이동
+                        currentColumn = Math.min(currentColumn + 1, this.options.length - 1);
+                    } else if (levelConnections.includes(currentColumn - 1)) {
+                        // 왼쪽으로 이동
+                        currentColumn = Math.max(currentColumn - 1, 0);
+                    }
+                    
+                    const currentX = this.options.length === 1 ? this.canvas.width / 2 : padding + (currentColumn * columnWidth);
+                    this.selectedPath.push({ 
+                        column: currentColumn, 
+                        level: level, 
+                        x: currentX, 
+                        y: currentY 
+                    });
+                });
+                
+                // 최종 도착점 추가
+                const finalX = this.options.length === 1 ? this.canvas.width / 2 : padding + (currentColumn * columnWidth);
+                const finalY = startY + 320; // 높이 조정
+                this.selectedPath.push({ 
+                    column: currentColumn, 
+                    level: connections.length, 
+                    x: finalX, 
+                    y: finalY 
+                });
+                
+                // 애니메이션 시작
+                this.currentStep = 0;
+                this.animatePath();
+            }
+
+            animatePath() {
+                if (this.currentStep >= this.selectedPath.length - 1) {
+                    // 애니메이션 완료
+                    this.isAnimating = false;
+                    this.runLadderBtn.disabled = false;
+                    this.showResult();
+                    return;
+                }
+                
+                // 현재 단계 그리기
+                this.drawLadder();
+                this.highlightPath(this.currentStep);
+                
+                this.currentStep++;
+                setTimeout(() => this.animatePath(), 350); // 적절한 속도로 조정
+            }
+
+            animatePath() {
+                if (this.currentStep >= this.selectedPath.length - 1) {
+                    // 애니메이션 완료
+                    this.isAnimating = false;
+                    this.runLadderBtn.disabled = false;
+                    this.showResult();
+                    return;
+                }
+                
+                // 현재 단계 그리기
+                this.drawLadder();
+                this.highlightPath(this.currentStep);
+                
+                this.currentStep++;
+                setTimeout(() => this.animatePath(), 350); // 적절한 속도로 조정
+            }
+
+            highlightPath(step) {
+                const ctx = this.ctx;
+                const path = this.selectedPath.slice(0, step + 2);
+                
+                // 경로 그리기
+                ctx.strokeStyle = '#9c27b0';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                
+                for (let i = 0; i < path.length - 1; i++) {
+                    const current = path[i];
+                    const next = path[i + 1];
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(current.x, current.y);
+                    ctx.lineTo(next.x, next.y);
+                    ctx.stroke();
+                }
+                
+                // 현재 위치에 하트 표시
+                if (step < path.length - 1) {
+                    const current = path[step + 1];
+                    
+                    // 하트 주변에 원형 배경
+                    ctx.fillStyle = 'rgba(156, 39, 176, 0.2)';
+                    ctx.beginPath();
+                    ctx.arc(current.x, current.y - 5, 15, 0, 2 * Math.PI);
+                    ctx.fill();
+                    
+                    // 하트 이모지
+                    ctx.fillStyle = '#9c27b0';
+                    ctx.font = 'bold 18px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('💖', current.x, current.y + 2);
+                }
+            }
+
+            showResult() {
+                const finalColumn = this.selectedPath[this.selectedPath.length - 1].column;
+                const selectedOption = this.options[finalColumn];
+                
+                this.resultOption.textContent = `${selectedOption} 💕`;
+                this.resultArea.classList.add('active');
+                
+                // 결과 애니메이션
+                this.resultOption.style.animation = 'none';
+                setTimeout(() => {
+                    this.resultOption.style.animation = 'heartBeat 1s ease-in-out 3';
+                }, 100);
+            }
+
+            showGameCanvas() {
+                this.inputSection.style.display = 'none';
+                this.gameCanvasArea.classList.add('active');
+                this.resultArea.classList.remove('active');
+            }
+
+            newGame() {
+                this.inputSection.style.display = 'block';
+                this.gameCanvasArea.classList.remove('active');
+                this.resultArea.classList.remove('active');
+                this.isAnimating = false;
+                this.runLadderBtn.disabled = false;
+            }
+
+            changeOptions() {
+                this.newGame();
+            }
+        }
+
+        // 게임 초기화
+        document.addEventListener('DOMContentLoaded', () => {
+            new CoupleLadderGame();
+            
+            // PWA 스타일 추가
+            const style = document.createElement('style');
+            style.textContent = `
+                @media (display-mode: standalone) {
+                    body {
+                        padding-top: env(safe-area-inset-top);
+                        padding-bottom: env(safe-area-inset-bottom);
+                    }
+                    .container {
+                        padding-top: calc(20px + env(safe-area-inset-top));
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        });
+    </script>
+</body>
+</html>
