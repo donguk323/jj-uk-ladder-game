@@ -1388,21 +1388,21 @@
                 this.highlightPath(this.currentStep);
                 this.updateParticles();
                 
-                // 특수 효과에 따른 애니메이션 속도 조정
+                // 특수 효과에 따른 애니메이션 속도 조정 (전체적으로 빠르게)
                 const currentPoint = this.selectedPath[this.currentStep + 1];
-                let delay = 400;
+                let delay = 200; // 기본 속도를 400에서 200으로 단축
                 
                 if (currentPoint && currentPoint.effect) {
                     switch (currentPoint.effect) {
                         case 'slow':
-                            delay = 800;
+                            delay = 350; // 800에서 350으로 단축
                             break;
                         case 'jump':
                         case 'teleport':
-                            delay = 200;
+                            delay = 100; // 200에서 100으로 단축
                             break;
                         case 'rainbow':
-                            delay = 300;
+                            delay = 150; // 300에서 150으로 단축
                             break;
                     }
                 }
@@ -1415,21 +1415,16 @@
                 const ctx = this.ctx;
                 const path = this.selectedPath.slice(0, step + 2);
                 
-                // 경로 그리기 (그라데이션 트레일)
+                // 경로 그리기 (심플한 단색 트레일)
                 for (let i = 0; i < path.length - 1; i++) {
                     const current = path[i];
                     const next = path[i + 1];
                     
-                    // 트레일 효과
-                    const gradient = ctx.createLinearGradient(current.x, current.y, next.x, next.y);
-                    gradient.addColorStop(0, '#9c27b0');
-                    gradient.addColorStop(0.5, '#e91e63');
-                    gradient.addColorStop(1, '#f44336');
-                    
-                    ctx.strokeStyle = gradient;
-                    ctx.lineWidth = 6;
-                    ctx.shadowColor = 'rgba(156, 39, 176, 0.6)';
-                    ctx.shadowBlur = 10;
+                    // 심플한 단색 트레일
+                    ctx.strokeStyle = '#ff6b6b';
+                    ctx.lineWidth = 5;
+                    ctx.shadowColor = 'rgba(255, 107, 107, 0.4)';
+                    ctx.shadowBlur = 6;
                     ctx.lineCap = 'round';
                     
                     ctx.beginPath();
@@ -1437,7 +1432,7 @@
                     ctx.lineTo(next.x, next.y);
                     ctx.stroke();
                     
-                    // 파티클 생성
+                    // 파티클 생성 (마지막 단계에서만)
                     if (i === path.length - 2) {
                         this.createTrailParticles(next.x, next.y, next.effect);
                     }
@@ -1445,52 +1440,43 @@
                 
                 ctx.shadowBlur = 0;
                 
-                // 현재 위치에 화려한 마커
+                // 현재 위치에 심플한 마커
                 if (step < path.length - 1) {
                     const current = path[step + 1];
                     
-                    // 외부 원 (펄스 효과)
-                    const time = Date.now() * 0.01;
-                    const pulseRadius = 20 + Math.sin(time) * 5;
+                    // 심플한 원형 마커
+                    ctx.fillStyle = '#ff6b6b';
+                    ctx.shadowColor = '#ff6b6b';
+                    ctx.shadowBlur = 8;
                     
-                    const outerGradient = ctx.createRadialGradient(
-                        current.x, current.y, 0, 
-                        current.x, current.y, pulseRadius
-                    );
-                    outerGradient.addColorStop(0, 'rgba(156, 39, 176, 0.8)');
-                    outerGradient.addColorStop(1, 'rgba(156, 39, 176, 0)');
-                    
-                    ctx.fillStyle = outerGradient;
                     ctx.beginPath();
-                    ctx.arc(current.x, current.y, pulseRadius, 0, 2 * Math.PI);
+                    ctx.arc(current.x, current.y, 12, 0, 2 * Math.PI);
                     ctx.fill();
                     
-                    // 내부 하트
-                    ctx.fillStyle = '#ff1744';
-                    ctx.font = 'bold 24px sans-serif';
+                    // 작은 하트
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px sans-serif';
                     ctx.textAlign = 'center';
-                    ctx.shadowColor = 'rgba(255, 23, 68, 0.8)';
-                    ctx.shadowBlur = 15;
-                    ctx.fillText('💖', current.x, current.y + 8);
                     ctx.shadowBlur = 0;
+                    ctx.fillText('💕', current.x, current.y + 4);
                 }
             }
 
             createTrailParticles(x, y, effect) {
-                const particleCount = effect ? 8 : 4;
+                const particleCount = effect ? 3 : 2; // 파티클 수 대폭 감소
                 
                 for (let i = 0; i < particleCount; i++) {
                     const angle = (Math.PI * 2 * i) / particleCount;
-                    const speed = 2 + Math.random() * 3;
-                    const size = 3 + Math.random() * 4;
+                    const speed = 1 + Math.random() * 2; // 속도도 감소
+                    const size = 2 + Math.random() * 2; // 크기도 감소
                     
-                    let color = '#9c27b0';
+                    let color = '#ff6b6b'; // 기본 핑크색으로 통일
                     if (effect) {
                         switch (effect) {
                             case 'jump': color = '#ff6b6b'; break;
-                            case 'teleport': color = '#9c27b0'; break;
-                            case 'slow': color = '#00bcd4'; break;
-                            case 'rainbow': color = `hsl(${Math.random() * 360}, 70%, 60%)`; break;
+                            case 'teleport': color = '#ff8e8e'; break;
+                            case 'slow': color = '#ffaa88'; break;
+                            case 'rainbow': color = '#ff6b6b'; break; // 무지개도 핑크로 통일
                         }
                     }
                     
@@ -1501,8 +1487,8 @@
                         vy: Math.sin(angle) * speed,
                         size: size,
                         color: color,
-                        life: 1.0,
-                        decay: 0.02 + Math.random() * 0.02
+                        life: 0.8, // 수명도 단축
+                        decay: 0.03 + Math.random() * 0.02
                     });
                 }
             }
@@ -1552,33 +1538,33 @@
             }
 
             createCelebrationEffect() {
-                // 결과 발표 전 은은한 하트 파티클 효과
+                // 결과 발표 전 은은한 하트 파티클 효과 (수량 감소)
                 const centerX = this.canvas.width / 2;
                 const centerY = this.canvas.height / 2;
                 
-                // 부드러운 하트 파티클 생성
-                for (let i = 0; i < 15; i++) {
+                // 부드러운 하트 파티클 생성 (개수 감소)
+                for (let i = 0; i < 8; i++) { // 15개에서 8개로 감소
                     setTimeout(() => {
-                        const angle = (Math.PI * 2 * i) / 15;
-                        const radius = 80 + Math.random() * 40;
+                        const angle = (Math.PI * 2 * i) / 8;
+                        const radius = 60 + Math.random() * 30; // 반경도 감소
                         const x = centerX + Math.cos(angle) * radius;
                         const y = centerY + Math.sin(angle) * radius;
                         
-                        // 하트 모양 파티클
-                        for (let j = 0; j < 3; j++) {
+                        // 하트 모양 파티클 (개수 감소)
+                        for (let j = 0; j < 2; j++) { // 3개에서 2개로 감소
                             this.particles.push({
-                                x: x + (Math.random() - 0.5) * 20,
-                                y: y + (Math.random() - 0.5) * 20,
-                                vx: (Math.random() - 0.5) * 2,
-                                vy: -Math.random() * 3 - 1,
-                                size: 4 + Math.random() * 3,
+                                x: x + (Math.random() - 0.5) * 15,
+                                y: y + (Math.random() - 0.5) * 15,
+                                vx: (Math.random() - 0.5) * 1.5,
+                                vy: -Math.random() * 2 - 0.5,
+                                size: 3 + Math.random() * 2,
                                 color: Math.random() > 0.5 ? '#ff6b6b' : '#ff8e8e',
-                                life: 2.0,
-                                decay: 0.01,
-                                symbol: Math.random() > 0.7 ? '💖' : '✨'
+                                life: 1.5,
+                                decay: 0.015,
+                                symbol: Math.random() > 0.6 ? '💖' : '✨'
                             });
                         }
-                    }, i * 50);
+                    }, i * 80); // 50ms에서 80ms로 간격 증가
                 }
                 
                 // 계속해서 파티클 업데이트
